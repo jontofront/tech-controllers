@@ -64,11 +64,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
         zones = data['zones']
 
-        battery_devices = filter(lambda deviceIndex: is_battery_operating_device(zones[deviceIndex]), zones)
         battery_entities = []
+        battery_devices = filter(lambda deviceIndex: is_battery_operating_device(zones[deviceIndex]), zones)
         for bd in battery_devices:
             battery_device = battery_devices[bd]
             battery_entities.append(TechBatterySensor(battery_device, api, controller_udid))
+        _LOGGER.debug("Controller battery operating Entities: %s", battery_entities)
         async_add_entities(battery_entities)
 
         async_add_entities(
