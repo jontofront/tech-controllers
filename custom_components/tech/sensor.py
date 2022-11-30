@@ -1,6 +1,7 @@
 """Platform for sensor integration."""
 import logging
 from homeassistant.components import sensor
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.const import TEMP_CELSIUS, PERCENTAGE
 from homeassistant.helpers.entity import Entity
 from . import assets
@@ -62,6 +63,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         async_add_entities(entities)
 
         zones = data['zones']
+
+        battery_devices = filter(lambda deviceIndex: is_battery_operating_device(zones[deviceIndex]), zones)
+        battery_entities = []
+        for bd in battery_devices:
+            battery_device = battery_devices[bd]
+            battery_entities.append(TechBatterySensor(battery_device, api, controller_udid))
+        async_add_entities(battery_entities)
+
         async_add_entities(
             [
                 ZoneTemperatureSensor(
@@ -73,6 +82,50 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             ],
             True,
         )
+
+def is_battery_operating_device(device) -> bool:
+    return device['zone']['batteryLevel'] is not None
+
+class TechBatterySensor(SensorEntity):
+    """Representation of a Tech battery sensor."""
+
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, device, api, controller_udid):
+        """Initialize the Tech battery sensor."""
+        _LOGGER.debug("Init TechBatterySensor... ")
+        self._controller_udid = _controller_udid
+        self._api = api
+        self._id = device["zone"]["id"]
+        self.update_properties(device)
+
+    def update_properties(self, device):
+        self._name = device["description"]["name"]
+        self._attr_native_value = device["zone"]["batteryLevel"]
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return "{}_battery".format(self._id)
+
+    @property
+    def name(self):
+        """Return the name of the device."""
+        return "{} battery".format(self._name)
+
+    async def async_update(self):
+        """Call by the Tech device callback to update state."""
+        _LOGGER.debug(
+            "Updating Tech battery sensor: %s, udid: %s, id: %s",
+            self._name,
+            self._controller_udid,
+            self._id,
+        )
+        device = await self._api.get_zone(self._controller_udid, self._id)
+        self.update_properties(device)
+
 
 class ZoneSensor(Entity):
     """Representation of a Sensor."""
@@ -96,14 +149,6 @@ class ZoneSensor(Entity):
             self._temperature = device["zone"]["currentTemperature"] / 10
         else:
             self._temperature = None
-        if device["zone"]["batteryLevel"] is not None:
-            self._battery = device["zone"]["batteryLevel"]
-        else:
-            self._battery = None
-        if device["zone"]["humidity"] is not None:
-            self._humidity = device["zone"]["humidity"]
-        else:
-            self._humidity = None
 
     @property
     def device_info(self):
@@ -123,16 +168,6 @@ class ZoneSensor(Entity):
     def name(self):
         """Return the name of the sensor."""
         return self._name
-
-    @property
-    def humidity(self):
-        """Return humidity level"""
-        return self._humidity
-
-    @property
-    def battery_level(self):
-        """Return battery level"""
-        return self._battery
 
     @property
     def state(self):
