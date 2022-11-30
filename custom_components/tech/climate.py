@@ -71,6 +71,14 @@ class TechThermostat(ClimateEntity):
             self._temperature =  device["zone"]["currentTemperature"] / 10
         else:
             self._temperature = None
+        if device["zone"]["humidity"] is not None:
+            self._humidity = device["zone"]["humidity"]
+        else:
+            self._humidity = None
+        if device["zone"]["batteryLevel"] is not None:
+            self._battery_level = device["zone"]["batteryLevel"]
+        else:
+            self._battery_level = None
         state = device["zone"]["flags"]["relayState"]
         if state == "on":
             self._state = CURRENT_HVAC_HEAT
@@ -142,6 +150,16 @@ class TechThermostat(ClimateEntity):
     def temperature_unit(self):
         """Return the unit of measurement."""
         return TEMP_CELSIUS
+
+    @property
+    def current_humidity(self):
+        """Return the current humidity."""
+        return self._humidity
+
+    @property
+    def battery_level(self):
+        """Return the current battery level."""
+        return self._battery_level
 
     @property
     def current_temperature(self):
