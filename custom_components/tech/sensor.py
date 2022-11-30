@@ -96,6 +96,14 @@ class ZoneSensor(Entity):
             self._temperature = device["zone"]["currentTemperature"] / 10
         else:
             self._temperature = None
+        if device["zone"]["batteryLevel"] is not None:
+            self._battery = device["zone"]["batteryLevel"]
+        else:
+            self._battery = None
+        if device["zone"]["humidity"] is not None:
+            self._humidity = device["zone"]["humidity"]
+        else:
+            self._humidity = None
 
     @property
     def device_info(self):
@@ -115,6 +123,16 @@ class ZoneSensor(Entity):
     def name(self):
         """Return the name of the sensor."""
         return self._name
+
+    @property
+    def humidity(self):
+        """Return humidity level"""
+        return self._humidity
+
+    @property
+    def battery_level(self):
+        """Return battery level"""
+        return self._battery
 
     @property
     def state(self):
